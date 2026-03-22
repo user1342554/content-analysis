@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Content Browser</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="header-row">
+                <h1>Content Browser</h1>
+                <a href="/setup" class="btn btn-small">Setup &amp; Pipeline</a>
+            </div>
+            <div class="stats">
+                <span class="stat">{{ stats.total }} videos</span>
+                <span class="stat tiktok">{{ stats.tiktok }} TikTok</span>
+                <span class="stat youtube">{{ stats.youtube }} YouTube</span>
+                <span class="stat">{{ stats.transcribed }} transcribed</span>
+                <span class="stat">{{ stats.with_comments }} with comments</span>
+            </div>
+        </header>
+
+        <div class="controls">
+            <form method="get" action="/" class="search-form">
+                <input type="text" name="q" value="{{ search }}" placeholder="Search titles, transcripts, comments..." class="search-input" autofocus>
+                <input type="hidden" name="platform" value="{{ platform }}">
+                <input type="hidden" name="sort" value="{{ sort }}">
+                <input type="hidden" name="order" value="{{ order }}">
+                <button type="submit" class="btn">Search</button>
+                {% if search %}
+                <a href="/?platform={{ platform }}&sort={{ sort }}&order={{ order }}" class="btn btn-clear">Clear</a>
+                {% endif %}
+            </form>
+
+            <div class="filters">
+                <div class="filter-group">
+                    <span class="filter-label">Platform:</span>
+                    <a href="/?q={{ search }}&sort={{ sort }}&order={{ order }}&platform=all" class="btn btn-filter {% if platform == 'all' %}active{% endif %}">All</a>
+                    <a href="/?q={{ search }}&sort={{ sort }}&order={{ order }}&platform=tiktok" class="btn btn-filter {% if platform == 'tiktok' %}active{% endif %}">TikTok</a>
+                    <a href="/?q={{ search }}&sort={{ sort }}&order={{ order }}&platform=youtube" class="btn btn-filter {% if platform == 'youtube' %}active{% endif %}">YouTube</a>
+                </div>
+                <div class="filter-group">
+                    <span class="filter-label">Sort:</span>
+                    <a href="/?q={{ search }}&platform={{ platform }}&sort=date&order=desc" class="btn btn-filter {% if sort == 'date' %}active{% endif %}">Date</a>
+                    <a href="/?q={{ search }}&platform={{ platform }}&sort=views&order=desc" class="btn btn-filter {% if sort == 'views' %}active{% endif %}">Views</a>
+                    <a href="/?q={{ search }}&platform={{ platform }}&sort=likes&order=desc" class="btn btn-filter {% if sort == 'likes' %}active{% endif %}">Likes</a>
+                    <a href="/?q={{ search }}&platform={{ platform }}&sort=comments&order=desc" class="btn btn-filter {% if sort == 'comments' %}active{% endif %}">Comments</a>
+                    <a href="/?q={{ search }}&platform={{ platform }}&sort=duration&order=desc" class="btn btn-filter {% if sort == 'duration' %}active{% endif %}">Duration</a>
+                </div>
+            </div>
+        </div>
+
+        {% if search %}
+        <p class="search-info">{{ videos|length }} results for "{{ search }}"</p>
+        {% endif %}
+
+        <div class="video-list">
+            {% for video in videos %}
+            <a href="/video/{{ video.id }}" class="video-card">
+                <div class="video-header">
+                    <span class="platform-badge {{ video.platform }}">{{ video.platform }}</span>
+                    <span class="video-date">{{ video.upload_date|fdate }}</span>
+                </div>
+                <h3 class="video-title">{{ video.title[:100] }}</h3>
+                <div class="video-meta">
+                    <span>{{ video.views|fnum }} views</span>
+                    <span>{{ video.likes|fnum }} likes</span>
+                    <span>{{ video.comments|fnum }} comments</span>
+                    <span>{{ video.duration|fdur or video.duration_string }}</span>
+                </div>
+                <div class="video-status">
+                    {% if video.has_transcript %}<span class="badge badge-transcript">Transcribed</span>{% endif %}
+                    {% if video.has_comments %}<span class="badge badge-comments">{{ video.fetched_comments }} comments</span>{% endif %}
+                    {% if video._search_match %}<span class="badge badge-match">Match in {{ video._search_match }}</span>{% endif %}
+                </div>
+            </a>
+            {% endfor %}
+        </div>
+
+        {% if not videos %}
+        <div class="empty">
+            {% if search %}
+            <p>No results for "{{ search }}"</p>
+            <p><a href="/">Clear search</a></p>
+            {% else %}
+            <p>No videos yet.</p>
+            <p><a href="/setup">Go to Setup</a> to configure channels and run the pipeline.</p>
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
+</body>
+</html>

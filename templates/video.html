@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ video.title[:60] }} — Content Browser</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <a href="/" class="back-link">&larr; Back to all videos</a>
+            <h1>Content Browser</h1>
+        </header>
+
+        <div class="video-detail">
+            <div class="video-detail-header">
+                <span class="platform-badge {{ video.platform }}">{{ video.platform }}</span>
+                <span class="video-date">{{ video.upload_date|fdate }}</span>
+                <a href="{{ video.url }}" target="_blank" rel="noopener" class="btn btn-small">Open on {{ video.platform }}</a>
+            </div>
+
+            <h2>{{ video.title }}</h2>
+
+            {% if video.description %}
+            <p class="video-description">{{ video.description }}</p>
+            {% endif %}
+
+            <div class="video-meta-detail">
+                <div class="meta-item">
+                    <span class="meta-label">Views</span>
+                    <span class="meta-value">{{ video.views|fnum }}</span>
+                </div>
+                <div class="meta-item">
+                    <span class="meta-label">Likes</span>
+                    <span class="meta-value">{{ video.likes|fnum }}</span>
+                </div>
+                <div class="meta-item">
+                    <span class="meta-label">Comments</span>
+                    <span class="meta-value">{{ video.comments|fnum }}</span>
+                </div>
+                <div class="meta-item">
+                    <span class="meta-label">Duration</span>
+                    <span class="meta-value">{{ video.duration|fdur or video.duration_string }}</span>
+                </div>
+                {% if video.reposts %}
+                <div class="meta-item">
+                    <span class="meta-label">Reposts</span>
+                    <span class="meta-value">{{ video.reposts|fnum }}</span>
+                </div>
+                {% endif %}
+                {% if video.track %}
+                <div class="meta-item">
+                    <span class="meta-label">Track</span>
+                    <span class="meta-value">{{ video.track }}</span>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Transcript Section -->
+        <div class="section">
+            <h3 class="section-title">Transcript</h3>
+            {% if transcript and transcript.text %}
+            <div class="transcript">
+                {% if transcript.segments %}
+                <div class="transcript-segments">
+                    {% for seg in transcript.segments %}
+                    <div class="segment">
+                        <span class="segment-time">{{ seg.start|fdur }}</span>
+                        <span class="segment-text">{{ seg.text }}</span>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="transcript-text">
+                    {{ transcript.text }}
+                </div>
+                {% endif %}
+            </div>
+            {% else %}
+            <div class="empty-section">
+                <p>No transcript available. Run <code>python run_pipeline.py transcribe</code> to generate.</p>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Comments Section -->
+        <div class="section">
+            <h3 class="section-title">
+                Comments
+                {% if comments and comments.comment_count %}
+                <span class="count">({{ comments.comment_count }})</span>
+                {% endif %}
+            </h3>
+            {% if comments and comments.comments %}
+            <div class="comments-list">
+                {% for comment in comments.comments %}
+                <div class="comment">
+                    <div class="comment-header">
+                        <span class="comment-author">{{ comment.author }}</span>
+                        <span class="comment-time">{{ comment.time_text }}</span>
+                        {% if comment.likes %}
+                        <span class="comment-likes">{{ comment.likes|fnum }} likes</span>
+                        {% endif %}
+                        {% if comment.is_favorited %}
+                        <span class="comment-favorited">&#x2764; Creator liked</span>
+                        {% endif %}
+                    </div>
+                    <div class="comment-text">{{ comment.text }}</div>
+
+                    {% if comment.replies %}
+                    <div class="replies">
+                        {% for reply in comment.replies %}
+                        <div class="comment reply">
+                            <div class="comment-header">
+                                <span class="comment-author">{{ reply.author }}</span>
+                                <span class="comment-time">{{ reply.time_text }}</span>
+                                {% if reply.likes %}
+                                <span class="comment-likes">{{ reply.likes|fnum }} likes</span>
+                                {% endif %}
+                            </div>
+                            <div class="comment-text">{{ reply.text }}</div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="empty-section">
+                <p>No comments available. Run <code>python run_pipeline.py comments</code> to extract.</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</body>
+</html>

@@ -1,0 +1,21 @@
+__pycache__/
+*.pyc
+*.pyo
+.env
+*.egg-info/
+dist/
+build/
+
+# Data files (large, user-specific)
+tiktok_analysis/tiktok_videos/
+tiktok_analysis/youtube_videos/
+tiktok_analysis/transcripts.json
+tiktok_analysis/transcripts_partial.json
+tiktok_analysis/comments.json
+tiktok_analysis/config.json
+tiktok_analysis/video_list.json
+tiktok_analysis/video_metadata.json
+tiktok_analysis/youtube_list.json
+tiktok_analysis/youtube_full.json
+tiktok_analysis/tiktok_metadata.json
+tiktok_analysis/youtube_metadata.json

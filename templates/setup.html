@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Setup — Content Browser</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Content Browser</h1>
+            <p class="subtitle">Setup &amp; Pipeline</p>
+        </header>
+
+        <!-- Tab navigation -->
+        <div class="tabs">
+            <button class="tab active" data-tab="setup">Setup</button>
+            <button class="tab" data-tab="pipeline">Run Pipeline</button>
+            <a href="/" class="tab">Browse Videos</a>
+        </div>
+
+        <!-- SETUP TAB -->
+        <div id="tab-setup" class="tab-content active">
+            <!-- Dependencies -->
+            <div class="section">
+                <h3 class="section-title">Dependencies</h3>
+                <div id="deps-list" class="deps-grid">
+                    <div class="dep-card" id="dep-yt-dlp">
+                        <div class="dep-header">
+                            <span class="dep-name">yt-dlp</span>
+                            <span class="dep-status loading">checking...</span>
+                        </div>
+                        <p class="dep-desc">Downloads videos from TikTok &amp; YouTube</p>
+                        <button class="btn btn-install" data-package="yt-dlp" style="display:none">Install</button>
+                    </div>
+                    <div class="dep-card" id="dep-ffmpeg">
+                        <div class="dep-header">
+                            <span class="dep-name">ffmpeg</span>
+                            <span class="dep-status loading">checking...</span>
+                        </div>
+                        <p class="dep-desc">Audio/video processing (install manually)</p>
+                    </div>
+                    <div class="dep-card" id="dep-torch">
+                        <div class="dep-header">
+                            <span class="dep-name">PyTorch + CUDA</span>
+                            <span class="dep-status loading">checking...</span>
+                        </div>
+                        <p class="dep-desc">GPU-accelerated computation</p>
+                        <button class="btn btn-install" data-package="torch" style="display:none">Install</button>
+                    </div>
+                    <div class="dep-card" id="dep-whisper">
+                        <div class="dep-header">
+                            <span class="dep-name">OpenAI Whisper</span>
+                            <span class="dep-status loading">checking...</span>
+                        </div>
+                        <p class="dep-desc">Speech-to-text transcription</p>
+                        <button class="btn btn-install" data-package="whisper" style="display:none">Install</button>
+                    </div>
+                </div>
+
+                <div style="margin-top: 12px;">
+                    <button id="btn-install-all" class="btn btn-primary">Install All (PyTorch + Whisper)</button>
+                    <button id="btn-refresh-deps" class="btn" style="margin-left: 8px;">Refresh</button>
+                </div>
+
+                <div id="install-log" class="log-box" style="display:none">
+                    <div class="log-header">
+                        <span>Installation Log</span>
+                        <span id="install-spinner" class="spinner"></span>
+                    </div>
+                    <pre id="install-output"></pre>
+                </div>
+            </div>
+
+            <!-- Channel URLs -->
+            <div class="section">
+                <h3 class="section-title">Channel URLs</h3>
+                <div class="form-group">
+                    <label for="tiktok-url">TikTok Channel URL</label>
+                    <input type="text" id="tiktok-url" class="input" placeholder="https://www.tiktok.com/@username" value="{{ config.tiktok_url }}">
+                </div>
+                <div class="form-group">
+                    <label for="youtube-url">YouTube Channel URL</label>
+                    <input type="text" id="youtube-url" class="input" placeholder="https://www.youtube.com/@username/videos" value="{{ config.youtube_url }}">
+                </div>
+                <div class="form-group">
+                    <label for="whisper-model">Whisper Model</label>
+                    <select id="whisper-model" class="input">
+                        <option value="tiny" {% if config.whisper_model == 'tiny' %}selected{% endif %}>tiny (fast, low quality)</option>
+                        <option value="base" {% if config.whisper_model == 'base' %}selected{% endif %}>base</option>
+                        <option value="small" {% if config.whisper_model == 'small' %}selected{% endif %}>small</option>
+                        <option value="medium" {% if config.whisper_model == 'medium' %}selected{% endif %}>medium</option>
+                        <option value="large-v3" {% if config.whisper_model == 'large-v3' %}selected{% endif %}>large-v3 (best quality, needs ~10GB VRAM)</option>
+                    </select>
+                </div>
+                <button id="btn-save-config" class="btn btn-primary">Save Settings</button>
+                <span id="save-status" class="save-status"></span>
+            </div>
+        </div>
+
+        <!-- PIPELINE TAB -->
+        <div id="tab-pipeline" class="tab-content">
+            <div class="section">
+                <h3 class="section-title">Run Pipeline</h3>
+                <p class="section-desc">Select which steps to run. Each step skips already-processed content.</p>
+
+                <div class="pipeline-steps">
+                    <label class="step-checkbox">
+                        <input type="checkbox" id="step-download" checked>
+                        <span class="step-label">
+                            <strong>1. Download</strong>
+                            <span class="step-desc">Download audio from TikTok &amp; YouTube channels</span>
+                        </span>
+                    </label>
+                    <label class="step-checkbox">
+                        <input type="checkbox" id="step-transcribe" checked>
+                        <span class="step-label">
+                            <strong>2. Transcribe</strong>
+                            <span class="step-desc">Transcribe audio with Whisper (GPU)</span>
+                        </span>
+                    </label>
+                    <label class="step-checkbox">
+                        <input type="checkbox" id="step-comments" checked>
+                        <span class="step-label">
+                            <strong>3. Extract Comments</strong>
+                            <span class="step-desc">Fetch all comments with replies</span>
+                        </span>
+                    </label>
+                </div>
+
+                <div style="margin-top: 16px;">
+                    <button id="btn-run-pipeline" class="btn btn-primary btn-large">Run Selected Steps</button>
+                    <button id="btn-stop-pipeline" class="btn btn-danger" style="display:none; margin-left: 8px;">Stop</button>
+                </div>
+
+                <div id="pipeline-log" class="log-box" style="display:none">
+                    <div class="log-header">
+                        <span id="pipeline-step-label">Pipeline</span>
+                        <span id="pipeline-spinner" class="spinner"></span>
+                    </div>
+                    <pre id="pipeline-output"></pre>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Tab switching
+        document.querySelectorAll('.tab[data-tab]').forEach(tab => {
+            tab.addEventListener('click', () => {
+                document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                document.querySelectorAll('.tab-content').forEach(tc => tc.classList.remove('active'));
+                tab.classList.add('active');
+                document.getElementById('tab-' + tab.dataset.tab).classList.add('active');
+            });
+        });
+
+        // Check dependencies on load
+        function checkDeps() {
+            fetch('/api/check-deps')
+                .then(r => r.json())
+                .then(deps => {
+                    updateDep('yt-dlp', 'yt_dlp', deps);
+                    updateDep('ffmpeg', 'ffmpeg', deps);
+                    updateDep('torch', 'torch', deps);
+                    updateDep('whisper', 'whisper', deps);
+                });
+        }
+
+        function updateDep(elemId, key, deps) {
+            const card = document.getElementById('dep-' + elemId);
+            const status = card.querySelector('.dep-status');
+            const btn = card.querySelector('.btn-install');
+            const dep = deps[key];
+
+            if (dep && dep.installed) {
+                status.className = 'dep-status ok';
+                let text = 'installed';
+                if (dep.version) text += ' (' + dep.version + ')';
+                if (key === 'torch' && dep.cuda) text += ' + CUDA';
+                if (key === 'torch' && !dep.cuda) text += ' (no CUDA!)';
+                status.textContent = text;
+                if (btn) btn.style.display = 'none';
+            } else {
+                status.className = 'dep-status missing';
+                status.textContent = 'not installed';
+                if (btn) btn.style.display = 'inline-flex';
+            }
+        }
+
+        checkDeps();
+
+        // Install buttons
+        document.querySelectorAll('.btn-install').forEach(btn => {
+            btn.addEventListener('click', () => installPackage(btn.dataset.package));
+        });
+
+        document.getElementById('btn-install-all').addEventListener('click', () => installPackage('all'));
+        document.getElementById('btn-refresh-deps').addEventListener('click', () => {
+            document.querySelectorAll('.dep-status').forEach(s => {
+                s.className = 'dep-status loading';
+                s.textContent = 'checking...';
+            });
+            checkDeps();
+        });
+
+        function installPackage(pkg) {
+            const logBox = document.getElementById('install-log');
+            const output = document.getElementById('install-output');
+            const spinner = document.getElementById('install-spinner');
+
+            logBox.style.display = 'block';
+            output.textContent = '';
+            spinner.style.display = 'inline-block';
+
+            fetch('/api/install', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({package: pkg})
+            }).then(response => {
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder();
+
+                function read() {
+                    reader.read().then(({done, value}) => {
+                        if (done) {
+                            spinner.style.display = 'none';
+                            checkDeps();
+                            return;
+                        }
+                        const text = decoder.decode(value);
+                        const lines = text.split('\n');
+                        for (const line of lines) {
+                            if (line.startsWith('data: ')) {
+                                const msg = line.substring(6);
+                                if (msg === '[DONE]') {
+                                    spinner.style.display = 'none';
+                                    checkDeps();
+                                    return;
+                                }
+                                output.textContent += msg + '\n';
+                                output.scrollTop = output.scrollHeight;
+                            }
+                        }
+                        read();
+                    });
+                }
+                read();
+            });
+        }
+
+        // Save config
+        document.getElementById('btn-save-config').addEventListener('click', () => {
+            const status = document.getElementById('save-status');
+            fetch('/api/save-config', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    tiktok_url: document.getElementById('tiktok-url').value,
+                    youtube_url: document.getElementById('youtube-url').value,
+                    whisper_model: document.getElementById('whisper-model').value,
+                })
+            })
+            .then(r => r.json())
+            .then(data => {
+                status.textContent = 'Saved!';
+                status.className = 'save-status ok';
+                setTimeout(() => { status.textContent = ''; }, 2000);
+            })
+            .catch(err => {
+                status.textContent = 'Error saving';
+                status.className = 'save-status error';
+            });
+        });
+
+        // Run pipeline
+        let pipelineAbort = null;
+
+        document.getElementById('btn-run-pipeline').addEventListener('click', () => {
+            const steps = [];
+            if (document.getElementById('step-download').checked) steps.push('download');
+            if (document.getElementById('step-transcribe').checked) steps.push('transcribe');
+            if (document.getElementById('step-comments').checked) steps.push('comments');
+
+            if (steps.length === 0) return;
+
+            // First save config
+            fetch('/api/save-config', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    tiktok_url: document.getElementById('tiktok-url').value,
+                    youtube_url: document.getElementById('youtube-url').value,
+                    whisper_model: document.getElementById('whisper-model').value,
+                })
+            }).then(() => {
+                const logBox = document.getElementById('pipeline-log');
+                const output = document.getElementById('pipeline-output');
+                const spinner = document.getElementById('pipeline-spinner');
+                const stepLabel = document.getElementById('pipeline-step-label');
+                const runBtn = document.getElementById('btn-run-pipeline');
+
+                logBox.style.display = 'block';
+                output.textContent = '';
+                spinner.style.display = 'inline-block';
+                runBtn.disabled = true;
+                runBtn.textContent = 'Running...';
+
+                pipelineAbort = new AbortController();
+
+                fetch('/api/run-pipeline', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({steps}),
+                    signal: pipelineAbort.signal,
+                }).then(response => {
+                    const reader = response.body.getReader();
+                    const decoder = new TextDecoder();
+
+                    function read() {
+                        reader.read().then(({done, value}) => {
+                            if (done) {
+                                spinner.style.display = 'none';
+                                runBtn.disabled = false;
+                                runBtn.textContent = 'Run Selected Steps';
+                                return;
+                            }
+                            const text = decoder.decode(value);
+                            const lines = text.split('\n');
+                            for (const line of lines) {
+                                if (line.startsWith('data: ')) {
+                                    try {
+                                        const data = JSON.parse(line.substring(6));
+                                        if (data.type === 'step') {
+                                            stepLabel.textContent = data.step.charAt(0).toUpperCase() + data.step.slice(1);
+                                            output.textContent += '\n--- ' + data.message + ' ---\n';
+                                        } else if (data.type === 'step_done') {
+                                            output.textContent += '✓ ' + data.message + '\n';
+                                        } else if (data.type === 'log') {
+                                            output.textContent += data.message + '\n';
+                                        } else if (data.type === 'done') {
+                                            output.textContent += '\n=== ' + data.message + ' ===\n';
+                                            spinner.style.display = 'none';
+                                            runBtn.disabled = false;
+                                            runBtn.textContent = 'Run Selected Steps';
+                                        } else if (data.type === 'error') {
+                                            output.textContent += 'ERROR: ' + data.message + '\n';
+                                        }
+                                        output.scrollTop = output.scrollHeight;
+                                    } catch (e) {}
+                                }
+                            }
+                            read();
+                        }).catch(err => {
+                            spinner.style.display = 'none';
+                            runBtn.disabled = false;
+                            runBtn.textContent = 'Run Selected Steps';
+                        });
+                    }
+                    read();
+                }).catch(err => {
+                    spinner.style.display = 'none';
+                    runBtn.disabled = false;
+                    runBtn.textContent = 'Run Selected Steps';
+                    if (err.name !== 'AbortError') {
+                        output.textContent += 'Connection error: ' + err.message + '\n';
+                    }
+                });
+            });
+        });
+    </script>
+</body>
+</html>
