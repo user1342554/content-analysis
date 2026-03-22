@@ -93,6 +93,20 @@ def get_all_videos():
     return videos
 
 
+def get_channel_stats():
+    """Load channel stats for both platforms."""
+    channels = {}
+    for platform in ["tiktok", "youtube"]:
+        path = BASE_DIR / f"{platform}_channel.json"
+        if path.exists():
+            try:
+                with open(path, "r", encoding="utf-8") as f:
+                    channels[platform] = json.load(f)
+            except (json.JSONDecodeError, OSError):
+                pass
+    return channels
+
+
 # ── Jinja filters ───────────────────────────────────────────────────
 
 def format_number(n):
@@ -247,8 +261,11 @@ def index():
         "with_comments": len([v for v in comments_data.values() if v.get("comment_count", 0) > 0]),
     }
 
+    channels = get_channel_stats()
+
     return render_template(
         "index.html", videos=videos, stats=stats, config=config,
+        channels=channels,
         platform=platform, search=search, sort=sort,
         order="desc" if reverse else "asc",
     )

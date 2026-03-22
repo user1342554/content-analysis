@@ -22,6 +22,32 @@
             </div>
         </header>
 
+        {% if channels %}
+        <div class="channel-cards">
+            {% for platform, ch in channels.items() %}
+            <div class="channel-card">
+                <div class="channel-header">
+                    <span class="platform-badge {{ platform }}">{{ platform }}</span>
+                    <span class="channel-name">{{ ch.name }}</span>
+                    {% if ch.followers %}
+                    <span class="channel-followers">{{ ch.followers|fnum }} followers</span>
+                    {% endif %}
+                </div>
+                {% if ch.description %}
+                <p class="channel-desc">{{ ch.description[:150] }}</p>
+                {% endif %}
+                <div class="channel-stats">
+                    <span>{{ ch.video_count or 0 }} videos</span>
+                    {% if ch.total_views %}<span>{{ ch.total_views|fnum }} total views</span>{% endif %}
+                    {% if ch.total_likes %}<span>{{ ch.total_likes|fnum }} total likes</span>{% endif %}
+                    {% if ch.total_comments %}<span>{{ ch.total_comments|fnum }} total comments</span>{% endif %}
+                    {% if ch.total_reposts %}<span>{{ ch.total_reposts|fnum }} total reposts</span>{% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
         <div class="controls">
             <form method="get" action="/" class="search-form">
                 <input type="text" name="q" value="{{ search }}" placeholder="Search titles, transcripts, comments..." class="search-input" autofocus>

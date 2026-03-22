@@ -39,20 +39,62 @@
                     <span class="meta-label">Comments</span>
                     <span class="meta-value">{{ video.comments|fnum }}</span>
                 </div>
+                {% if video.reposts %}
+                <div class="meta-item">
+                    <span class="meta-label">Reposts/Shares</span>
+                    <span class="meta-value">{{ video.reposts|fnum }}</span>
+                </div>
+                {% endif %}
                 <div class="meta-item">
                     <span class="meta-label">Duration</span>
                     <span class="meta-value">{{ video.duration|fdur or video.duration_string }}</span>
                 </div>
-                {% if video.reposts %}
+                {% if video.resolution %}
                 <div class="meta-item">
-                    <span class="meta-label">Reposts</span>
-                    <span class="meta-value">{{ video.reposts|fnum }}</span>
+                    <span class="meta-label">Resolution</span>
+                    <span class="meta-value">{{ video.resolution }}</span>
+                </div>
+                {% endif %}
+                {% if video.filesize %}
+                <div class="meta-item">
+                    <span class="meta-label">File Size</span>
+                    <span class="meta-value">{{ "%.1f"|format(video.filesize / 1048576) }} MB</span>
                 </div>
                 {% endif %}
                 {% if video.track %}
                 <div class="meta-item">
                     <span class="meta-label">Track</span>
                     <span class="meta-value">{{ video.track }}</span>
+                </div>
+                {% endif %}
+                {% if video.artist %}
+                <div class="meta-item">
+                    <span class="meta-label">Artist</span>
+                    <span class="meta-value">{{ video.artist }}</span>
+                </div>
+                {% endif %}
+                {% if video.uploader %}
+                <div class="meta-item">
+                    <span class="meta-label">Uploader</span>
+                    <span class="meta-value">{{ video.uploader }}</span>
+                </div>
+                {% endif %}
+                {% if video.categories %}
+                <div class="meta-item">
+                    <span class="meta-label">Categories</span>
+                    <span class="meta-value">{{ video.categories|join(', ') }}</span>
+                </div>
+                {% endif %}
+                {% if video.tags %}
+                <div class="meta-item">
+                    <span class="meta-label">Tags</span>
+                    <span class="meta-value">{{ video.tags[:10]|join(', ') }}</span>
+                </div>
+                {% endif %}
+                {% if video.timestamp %}
+                <div class="meta-item">
+                    <span class="meta-label">Uploaded</span>
+                    <span class="meta-value">{{ video.upload_date|fdate }}</span>
                 </div>
                 {% endif %}
             </div>

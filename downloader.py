@@ -97,9 +97,98 @@ def download_platform(platform, url, audio_only=True):
     count = update_video_list(platform, video_dir)
     yield f"Done! {count} {platform} videos indexed"
 
+    # Extract channel stats
+    yield f"Extracting {platform} channel stats..."
+    stats = extract_channel_stats(platform, url, video_dir)
+    if stats:
+        yield f"Channel: {stats.get('name', '?')} — {stats.get('followers', '?')} followers"
+    else:
+        yield f"Could not extract channel stats (will use info from downloaded data)"
+
+
+def extract_channel_stats(platform, url, video_dir):
+    """Extract channel-level stats (followers, description, etc.) from info.json files."""
+    channel_stats = {}
+
+    # Look for channel-level info.json files
+    for info_file in video_dir.glob("*.info.json"):
+        stem = info_file.stem.replace(".info", "")
+        is_channel = False
+        if platform == "tiktok" and len(stem) > 30:
+            is_channel = True
+        if platform == "youtube" and (stem.startswith("UC") or stem.startswith("@")):
+            is_channel = True
+
+        if not is_channel:
+            continue
+
+        try:
+            with open(info_file, "r", encoding="utf-8") as f:
+                data = json.load(f)
+        except (json.JSONDecodeError, OSError):
+            continue
+
+        channel_stats = {
+            "platform": platform,
+            "id": data.get("id", ""),
+            "name": data.get("title", "") or data.get("channel", ""),
+            "description": data.get("description", ""),
+            "url": data.get("webpage_url", url),
+            "followers": data.get("channel_follower_count", 0),
+            "video_count": data.get("playlist_count", 0),
+        }
+
+        if platform == "youtube":
+            channel_stats["channel_id"] = data.get("channel_id", "")
+            channel_stats["channel_url"] = data.get("channel_url", "")
+        break
+
+    # If no channel info found, try fetching it
+    if not channel_stats:
+        try:
+            cmd = [
+                "yt-dlp", "--dump-json", "--playlist-items", "0",
+                "--flat-playlist", url,
+            ]
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
+            if result.returncode == 0 and result.stdout.strip():
+                data = json.loads(result.stdout.strip().split("\n")[0])
+                channel_stats = {
+                    "platform": platform,
+                    "id": data.get("id", ""),
+                    "name": data.get("title", "") or data.get("channel", ""),
+                    "description": data.get("description", ""),
+                    "url": url,
+                    "followers": data.get("channel_follower_count", 0),
+                    "video_count": data.get("playlist_count", 0),
+                }
+        except Exception:
+            pass
+
+    # Also compute aggregate stats from video metadata
+    videos_file = BASE_DIR / f"{platform}_metadata.json"
+    if videos_file.exists():
+        try:
+            with open(videos_file, "r", encoding="utf-8") as f:
+                videos = json.load(f)
+            channel_stats["total_views"] = sum(v.get("views", 0) or 0 for v in videos)
+            channel_stats["total_likes"] = sum(v.get("likes", 0) or 0 for v in videos)
+            channel_stats["total_comments"] = sum(v.get("comments", 0) or 0 for v in videos)
+            channel_stats["total_reposts"] = sum(v.get("reposts", 0) or 0 for v in videos)
+            channel_stats["video_count"] = len(videos)
+        except (json.JSONDecodeError, OSError):
+            pass
+
+    if channel_stats:
+        out_file = BASE_DIR / f"{platform}_channel.json"
+        with open(out_file, "w", encoding="utf-8") as f:
+            json.dump(channel_stats, f, ensure_ascii=False, indent=2)
+
+    return channel_stats
+
 
 def update_video_list(platform, video_dir):
-    """Build a clean metadata list from info.json files."""
+    """Build a clean metadata list from info.json files with ALL available fields."""
     videos = []
     for info_file in sorted(video_dir.glob("*.info.json")):
         stem = info_file.stem.replace(".info", "")
@@ -122,22 +211,34 @@ def update_video_list(platform, video_dir):
             "id": video_id,
             "platform": platform,
             "title": data.get("title", ""),
+            "fulltitle": data.get("fulltitle", ""),
             "description": data.get("description", ""),
             "duration": data.get("duration", 0),
             "duration_string": data.get("duration_string", ""),
             "upload_date": data.get("upload_date", ""),
+            "timestamp": data.get("timestamp"),
             "views": data.get("view_count", 0),
             "likes": data.get("like_count", 0),
             "comments": data.get("comment_count", 0),
             "url": data.get("webpage_url", ""),
+            "thumbnail": data.get("thumbnail", ""),
+            "resolution": data.get("resolution", ""),
+            "filesize": data.get("filesize", 0),
         }
 
         if platform == "tiktok":
             entry["reposts"] = data.get("repost_count", 0)
             entry["track"] = data.get("track", "")
             entry["artist"] = data.get("artist", "")
+            entry["uploader"] = data.get("uploader", "")
+            entry["uploader_id"] = data.get("uploader_id", "")
+            entry["channel"] = data.get("channel", "")
         else:
             entry["channel"] = data.get("channel", "")
+            entry["channel_id"] = data.get("channel_id", "")
+            entry["categories"] = data.get("categories", [])
+            entry["tags"] = data.get("tags", [])
+            entry["availability"] = data.get("availability", "")
 
         audio_exts = [".mp3", ".m4a", ".opus", ".webm", ".mp4"]
         entry["has_audio"] = any((video_dir / f"{video_id}{ext}").exists() for ext in audio_exts)
